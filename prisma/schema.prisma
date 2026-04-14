@@ -23,7 +23,7 @@ model User {
   contacts     Contact[]     @relation("OwnedContacts")
   contactOf    Contact[]     @relation("ContactOf")
   chats        Chat[]
-  chatMembers  ChatMember[]
+  chatMembers  ChatMember[] //User is member to many chats
   sentMessages ChatMessage[]
 }
 
@@ -49,6 +49,7 @@ model Chat {
   messages    ChatMessage[]
 }
 
+// For Groups
 model ChatMember {
   id     String         @id @default(uuid(7)) @db.Uuid
   chat   Chat           @relation(fields: [chatId], references: [id], onDelete: Cascade)
@@ -59,6 +60,7 @@ model ChatMember {
 }
 
 enum ChatMemberRole {
+  OWNER
   ADMIN
   MEMBER
 }
