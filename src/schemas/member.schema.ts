@@ -29,3 +29,35 @@ export const ChatMemberLazySchema = z.object({
 });
 
 export type ChatMemberLazyType = z.infer<typeof ChatMemberLazySchema>;
+
+export const ChatMemberInputSchema = z.object({
+  chatId: UuidSchema,
+  userId: UuidSchema,
+});
+
+export type ChatMemberInput = z.infer<typeof ChatMemberInputSchema>;
+
+export const ChatMemberOutputSchema = z.object({
+  chatId: UuidSchema,
+  userId: UuidSchema.nullable(),
+  role: z.enum(["MEMBER", "ADMIN", "OWNER"]),
+});
+
+export type ChatMemberOutput = z.infer<typeof ChatMemberOutputSchema>;
+
+export const ChatMemberDeleteSchema = z.object({
+  id: UuidSchema,
+  chatId: UuidSchema,
+});
+
+export type ChatMemberDelete = z.infer<typeof ChatMemberDeleteSchema>;
+
+export const ChatMemberEditSchema = z.object({
+  id: UuidSchema,
+  chatId: UuidSchema,
+  role: z.enum(["MEMBER", "ADMIN"]),
+});
+
+export type ChatMemberEdit = z.infer<typeof ChatMemberEditSchema>;
+
+
