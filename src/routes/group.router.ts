@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { deleteChat } from "../controllers/chat.controller";
-import { createGroupChat, getGroup, editGroupInfo } from "../controllers/group.controller";
+import { createGroupChat, getGroup, editGroupInfo, createGroupMember, deleteMember, editMemberRole } from "../controllers/group.controller";
 
 const groupRouter = Router();
-
 const groupMemberRouter = Router();
 
-groupMemberRouter.post("/",);
-groupMemberRouter.delete("/:memberId",);
-groupMemberRouter.patch("/role/:memberId",);
+groupMemberRouter.post("/", createGroupMember);
+groupMemberRouter.patch("/role/:memberId", editMemberRole);
+groupMemberRouter.delete("/:memberId", deleteMember);
+
 groupRouter.use("/member", groupMemberRouter);
 
 groupRouter.get("/:id", getGroup);

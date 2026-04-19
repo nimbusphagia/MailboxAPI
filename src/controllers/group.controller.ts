@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { UnauthorizedError } from "../errors";
 import { GroupChatInputSchema } from "../schemas/chat.schema";
-import { createGroupChatServ, editGroupInfoServ, getGroupChatById } from "../services/group.service";
+import { createGroupChatServ, createMember, deleteGroupMember, editGroupInfoServ, editGroupMemberRole, getGroupChatById } from "../services/group.service";
 import { UuidSchema } from "../schemas/util.schema";
+import { ChatMemberDeleteSchema, ChatMemberEditSchema, ChatMemberInputSchema } from "../schemas/member.schema";
 
 export async function createGroupChat(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -34,6 +35,40 @@ export async function getGroup(req: Request, res: Response, next: NextFunction):
     const chatId = UuidSchema.parse(req.params.id);
     const chat = await getGroupChatById(chatId, currentUserId);
     res.status(200).json(chat);
+  } catch (err) {
+    next(err);
+  }
+}
+export async function createGroupMember(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) throw new UnauthorizedError("Not authenticated");
+    const currentUserId = req.user.id;
+    const data = ChatMemberInputSchema.parse(req.body);
+    const member = await createMember(data, currentUserId);
+    res.status(201).json(member);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function editMemberRole(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) throw new UnauthorizedError("Not authenticated");
+    const currentUserId = req.user.id
+    const data = ChatMemberEditSchema.parse({ id: req.params.memberId, ...req.body })
+    const member = await editGroupMemberRole(data, currentUserId);
+    res.status(200).json(member);
+  } catch (err) {
+    next(err);
+  }
+}
+export async function deleteMember(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) throw new UnauthorizedError("Not authenticated");
+    const currentUserId = req.user.id
+    const data = ChatMemberDeleteSchema.parse({ id: req.params.memberId, ...req.body });
+    await deleteGroupMember(data, currentUserId);
+    res.status(204).end();
   } catch (err) {
     next(err);
   }

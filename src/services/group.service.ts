@@ -84,7 +84,7 @@ export async function editGroupInfoServ({ name, imgUrl, id }: GroupChatInput, cu
     },
   });
 }
-export async function createGroupMember({ chatId, userId }: ChatMemberInput, currentUserId: UuidType): Promise<ChatMemberOutput> {
+export async function createMember({ chatId, userId }: ChatMemberInput, currentUserId: UuidType): Promise<ChatMemberOutput> {
   const groupChat = await prisma.chat.findUnique({
     where: {
       id: chatId,
