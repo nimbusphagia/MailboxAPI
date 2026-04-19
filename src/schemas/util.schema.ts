@@ -47,3 +47,25 @@ export const JsonValueSchema: z.ZodType<Prisma.JsonValue> = z.lazy(() =>
     z.record(z.string(), JsonValueSchema),
   ])
 );
+
+export const NullableJsonNullValueSchema = z.enum(["DbNull", "JsonNull"]);
+
+export const InputJsonValueSchema: z.ZodType<Prisma.InputJsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(InputJsonValueSchema),
+    z.record(z.string(), InputJsonValueSchema),
+  ])
+);
+export const NullableInputJsonValueSchema = z
+  .union([
+    NullableJsonNullValueSchema,
+    InputJsonValueSchema,
+  ])
+  .transform((v) => {
+    if (v === "DbNull") return Prisma.DbNull;
+    if (v === "JsonNull") return Prisma.JsonNull;
+    return v;
+  });

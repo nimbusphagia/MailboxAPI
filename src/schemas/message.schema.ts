@@ -1,5 +1,5 @@
 import z from "zod";
-import { JsonValueSchema, UuidSchema } from "./util.schema";
+import { InputJsonValueSchema, JsonValueSchema, UuidSchema } from "./util.schema";
 
 export const ChatMessageModelSchema = z.object({
   id: z.string(),
@@ -29,4 +29,25 @@ export const ChatMessageSchema = z.object({
   replyToId: UuidSchema.nullable(),
 });
 
-export type ChatMessageType = z.infer<typeof ChatMessageSchema>;
+export type MessageType = z.infer<typeof ChatMessageSchema>;
+
+export const MessageCreateSchema = z.object({
+  chatId: UuidSchema,
+  content: z.string().optional(),
+  type: z.enum(["TEXT", "IMAGE", "SYSTEM_EVENT"]),
+  metadata: InputJsonValueSchema.optional(),
+  replyToId: UuidSchema.nullable().optional(),
+});
+
+export type MessageCreate = z.infer<typeof MessageCreateSchema>;
+
+export const MessageEditSchema = z.object({
+  id: UuidSchema,
+  chatId: UuidSchema,
+  content: z.string().optional(),
+  type: z.enum(["TEXT", "IMAGE", "SYSTEM_EVENT"]),
+  metadata: InputJsonValueSchema.optional(),
+  replyToId: UuidSchema.nullable().optional(),
+});
+
+export type MessageEdit = z.infer<typeof MessageEditSchema>;
