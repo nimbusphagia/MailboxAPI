@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx --watch src/index.ts",
     "build": "tsup src/index.ts --format cjs --out-dir dist",
+    "test": "dotenv -e .env.test -- vitest",
     "start": "node dist/index.js",
     "postinstall": "prisma generate"
   },
@@ -41,9 +42,13 @@
     "@types/express": "^5.0.6",
     "@types/node": "^25.5.2",
     "@types/pg": "^8.20.0",
+    "@types/supertest": "^7.2.0",
+    "dotenv-cli": "^11.0.0",
     "prisma-zod-generator": "^2.1.4",
+    "supertest": "^7.2.2",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.5"
   }
 }

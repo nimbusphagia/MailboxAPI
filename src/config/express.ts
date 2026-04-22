@@ -26,4 +26,4 @@ app.use("/auth", authRouter);
 app.use("/api", authMiddleware, indexRouter);
 
 app.use(errorMiddleware);
-export default app
+export default app;
