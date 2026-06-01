@@ -2,10 +2,10 @@
   "name": "msg",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "tsx --watch src/index.ts",
-    "build": "tsup src/index.ts --format cjs --out-dir dist",
+    "build": "tsup",
     "test": "dotenv -e .env.test -- vitest",
     "start": "node dist/index.js",
     "postinstall": "prisma generate"
@@ -17,7 +17,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/nimbusphagia/MSG/issues"
   },

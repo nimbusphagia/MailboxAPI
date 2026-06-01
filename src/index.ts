@@ -1,12 +1,12 @@
-import 'dotenv/config'
-import app from './config/express'
+import "dotenv/config";
+import app from "./config/express";
 
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 3000;
 
-if (process.env.NODE_ENV === "dev") {
+if (process.env.NODE_ENV === "development") {
   app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
-  })
+    console.log(`Server running on port ${PORT}`);
+  });
 }
 
 export default app;

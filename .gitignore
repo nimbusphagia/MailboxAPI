@@ -3,4 +3,5 @@ node_modules
 .env.*
 src/generated/
 src/schemas/pure/
+dist/
 
