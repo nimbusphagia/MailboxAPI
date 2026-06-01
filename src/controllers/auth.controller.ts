@@ -13,7 +13,8 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
+      partitioned: process.env.NODE_ENV === "production",
       maxAge: 1000 * 60 * 60 * 24,
     });
 
