@@ -53,9 +53,19 @@ export type GroupChatType = z.infer<typeof GroupChatSchema>;
 export const GroupChatInputSchema = z.object({
   id: UuidSchema.optional(),
   name: z.string().min(1),
-  imgUrl: z.url(),
+  imgUrl: z.url().optional(),
   createdById: UuidSchema.optional(),
   members: z.array(UuidSchema),
 });
 
 export type GroupChatInput = z.infer<typeof GroupChatInputSchema>;
+
+export const GroupLazySchema = z.object({
+  id: UuidSchema,
+  createdAt: z.date(),
+  isGroup: z.boolean(),
+  name: z.string().min(1),
+  imgUrl: z.url().optional(),
+  lastMessage: ChatMessageSchema.optional(),
+});
+export type GroupLazy = z.infer<typeof GroupLazySchema>;

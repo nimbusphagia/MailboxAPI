@@ -1,5 +1,10 @@
 import prisma from "../config/prisma";
-import { GroupChatInput, GroupChatType } from "../schemas/chat.schema";
+import {
+  GroupChatInput,
+  GroupChatType,
+  GroupLazy,
+  GroupLazySchema,
+} from "../schemas/chat.schema";
 import { UuidType } from "../schemas/util.schema";
 import { safeUserInclude } from "./utils";
 import { NotFoundError, ConflictError, ForbiddenError } from "../errors";
@@ -11,6 +16,47 @@ import {
 } from "../schemas/member.schema";
 import { ChatMember } from "../generated/prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
+
+export async function getGroupChatsById(
+  currentUserId: UuidType,
+): Promise<GroupLazy[]> {
+  const raw = await prisma.chat.findMany({
+    where: {
+      isGroup: true,
+      members: {
+        some: {
+          userId: currentUserId,
+        },
+      },
+    },
+    select: {
+      id: true,
+      createdAt: true,
+      isGroup: true,
+      name: true,
+      imgUrl: true,
+      messages: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+      },
+    },
+  });
+
+  const mapped = raw.map((chat) =>
+    GroupLazySchema.parse({
+      ...chat,
+      lastMessage: chat.messages[0] ?? undefined,
+    }),
+  );
+
+  return mapped.sort((a, b) => {
+    const aDate = a.lastMessage?.createdAt ?? a.createdAt;
+    const bDate = b.lastMessage?.createdAt ?? b.createdAt;
+    return bDate.getTime() - aDate.getTime();
+  });
+}
 
 export async function getGroupChatById(
   id: UuidType,

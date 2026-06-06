@@ -14,6 +14,7 @@ export async function getChatsById(
 ): Promise<ChatLazy[]> {
   const raw = await prisma.chat.findMany({
     where: {
+      isGroup: false,
       members: {
         some: {
           userId: currentUserId,

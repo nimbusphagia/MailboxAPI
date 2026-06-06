@@ -1,6 +1,15 @@
 import { Router } from "express";
 import { deleteChat } from "../controllers/chat.controller";
-import { createGroupChat, getGroup, editGroupInfo, createGroupMember, deleteMember, editMemberRole } from "../controllers/group.controller";
+import {
+  createGroupChat,
+  getGroup,
+  editGroupInfo,
+  createGroupMember,
+  deleteMember,
+  editMemberRole,
+  getGroups,
+} from "../controllers/group.controller";
+import upload from "../middleware/upload.middleware";
 
 const groupRouter = Router();
 const groupMemberRouter = Router();
@@ -11,8 +20,9 @@ groupMemberRouter.delete("/:memberId", deleteMember);
 
 groupRouter.use("/member", groupMemberRouter);
 
+groupRouter.get("/", getGroups);
 groupRouter.get("/:id", getGroup);
-groupRouter.post("/", createGroupChat);
+groupRouter.post("/", upload.single("image"), createGroupChat);
 groupRouter.delete("/:id", deleteChat);
 groupRouter.put("/:id", editGroupInfo);
 
