@@ -4,6 +4,7 @@ import {
   GroupChatType,
   GroupLazy,
   GroupLazySchema,
+  GroupResponse,
 } from "../schemas/chat.schema";
 import { UuidType } from "../schemas/util.schema";
 import { safeUserInclude } from "./utils";
@@ -61,26 +62,50 @@ export async function getGroupChatsById(
 export async function getGroupChatById(
   id: UuidType,
   currentUserId: UuidType,
-): Promise<GroupChatType> {
+): Promise<GroupResponse> {
   const chat = await prisma.chat.findUnique({
     where: {
       id,
       isGroup: true,
-      members: {
-        some: {
-          userId: currentUserId,
-        },
-      },
+      members: { some: { userId: currentUserId } },
     },
     include: {
-      members: {
-        include: safeUserInclude,
-      },
+      members: { include: safeUserInclude },
       messages: true,
     },
   });
   if (!chat) throw new NotFoundError("Chat doesn't exist");
-  return chat;
+
+  const primaryMember = chat.members.find(
+    (m) => m.user!.id === currentUserId,
+  )?.user;
+  if (!primaryMember) throw new NotFoundError("Chat member not found");
+
+  const secondaryMembers = chat.members
+    .filter((m) => m.user!.id !== currentUserId)
+    .map((m) => m.user!);
+
+  const contacts = await prisma.contact.findMany({
+    where: {
+      ownerId: currentUserId,
+      userId: { in: secondaryMembers.map((m) => m.id) },
+    },
+  });
+
+  const contactMap = new Map(contacts.map((c) => [c.userId, c.nickname]));
+  return {
+    id: chat.id,
+    isGroup: chat.isGroup,
+    name: chat.name!,
+    imgUrl: chat.imgUrl!,
+    createdAt: chat.createdAt,
+    primaryMember,
+    secondaryMembers: secondaryMembers.map((m) => ({
+      ...m,
+      nickname: contactMap.get(m.id) ?? null,
+    })),
+    messages: chat.messages,
+  };
 }
 
 export async function createGroupChatServ(
@@ -101,7 +126,9 @@ export async function createGroupChatServ(
         isGroup: true,
         createdById: currentUserId,
         name,
-        imgUrl,
+        imgUrl:
+          imgUrl ??
+          "https://res.cloudinary.com/dlsa973vu/image/upload/v1780933463/chiikawa-and-hachiwares-friendship-is-so-sweet-v0-ke02d73xppre1_cgd6q9.jpg",
         members: {
           create: [
             { userId: currentUserId, role: "OWNER" },

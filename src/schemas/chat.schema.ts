@@ -69,3 +69,18 @@ export const GroupLazySchema = z.object({
   lastMessage: ChatMessageSchema.optional(),
 });
 export type GroupLazy = z.infer<typeof GroupLazySchema>;
+
+export const GroupResponseSchema = z.object({
+  id: UuidSchema,
+  name: z.string().min(1),
+  imgUrl: z.url().optional(),
+  isGroup: z.boolean(),
+  createdAt: z.date(),
+  primaryMember: SafeUserSchema,
+  secondaryMembers: z.array(SafeUserSchema.extend({ nickname: z.string().nullable() })),
+  messages: z.array(ChatMessageSchema),
+});
+
+export type GroupResponse = z.infer<typeof GroupResponseSchema>;
+
+
