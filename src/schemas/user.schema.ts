@@ -62,3 +62,8 @@ export const UserDeleteSchema = z.object({
   password: PasswordSchema,
 });
 export type UserDelete = z.infer<typeof UserDeleteSchema>;
+
+export const ChatMemberSchema = SafeUserSchema.extend({
+  nickname: z.string().nullable(),
+});
+export type ChatMember = z.infer<typeof ChatMemberSchema>;

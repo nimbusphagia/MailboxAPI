@@ -75,7 +75,18 @@ export async function getChatById(
 ): Promise<ChatResponse> {
   const raw = await prisma.chat.findUnique({
     where: { id, isGroup: false, members: { some: { userId: currentUserId } } },
-    include: { members: { select: safeUserInclude }, messages: true },
+    include: {
+      members: { select: safeUserInclude },
+      messages: {
+        include: {
+          replyTo: {
+            include: {
+              sender: { omit: { passwordHash: true } },
+            },
+          },
+        },
+      },
+    },
     omit: { name: true, imgUrl: true },
   });
 
@@ -94,6 +105,43 @@ export async function getChatById(
       ownerId_userId: { ownerId: currentUserId, userId: secondaryRaw.id },
     },
   });
+
+  const replyToSenderIds = [
+    ...new Set(
+      messages
+        .map((m) => m.replyTo?.senderId)
+        .filter((sid): sid is string => !!sid),
+    ),
+  ];
+
+  const replyToContacts = await prisma.contact.findMany({
+    where: {
+      ownerId: currentUserId,
+      userId: { in: replyToSenderIds },
+    },
+  });
+
+  const replyToContactMap = new Map(
+    replyToContacts.map((c) => [c.userId, c.nickname]),
+  );
+
+  const messagesWithReply = messages.map((message) => {
+    if (!message.replyTo) return { ...message, replyTo: undefined };
+
+    const { sender, ...replyToRest } = message.replyTo;
+    const replyToNickname = sender
+      ? (replyToContactMap.get(sender.id) ?? null)
+      : null;
+
+    return {
+      ...message,
+      replyTo: {
+        ...replyToRest,
+        sender: sender ? { ...sender, nickname: replyToNickname } : null,
+      },
+    };
+  });
+
   return {
     id: chatId,
     isGroup,
@@ -103,10 +151,9 @@ export async function getChatById(
       ...secondaryRaw,
       nickname: secondaryContact ? secondaryContact.nickname : null,
     },
-    messages,
+    messages: messagesWithReply,
   };
 }
-
 export async function createChatServ(
   contactId: UuidType,
   currentUserId: UuidType,

@@ -1,9 +1,11 @@
 import z from "zod";
 import {
+  ImageMetadataSchema,
   InputJsonValueSchema,
   JsonValueSchema,
   UuidSchema,
 } from "./util.schema";
+import { ChatMemberSchema } from "./user.schema";
 
 export const ChatMessageModelSchema = z.object({
   id: z.string(),
@@ -21,20 +23,6 @@ export const ChatMessageModelSchema = z.object({
 });
 
 export type ChatMessagePureType = z.infer<typeof ChatMessageModelSchema>;
-
-export const ChatMessageSchema = z.object({
-  id: UuidSchema,
-  chatId: UuidSchema,
-  senderId: UuidSchema.nullable(),
-  content: z.string().nullable(),
-  type: z.enum(["TEXT", "IMAGE", "SYSTEM_EVENT"]),
-  metadata: JsonValueSchema.nullable(),
-  createdAt: z.date(),
-  replyToId: UuidSchema.nullable(),
-  isRead: z.boolean(),
-});
-
-export type MessageType = z.infer<typeof ChatMessageSchema>;
 
 const TextMessageSchema = z.object({
   chatId: UuidSchema,
@@ -91,3 +79,32 @@ export const MessageEditSchema = z.object({
 });
 
 export type MessageEdit = z.infer<typeof MessageEditSchema>;
+
+export const ReplySchema = z.object({
+  id: UuidSchema,
+  chatId: UuidSchema,
+  senderId: UuidSchema.nullable(),
+  sender: ChatMemberSchema.nullable(),
+  content: z.string().nullable(),
+  type: z.enum(["TEXT", "IMAGE", "SYSTEM_EVENT"]),
+  metadata: JsonValueSchema.nullable(),
+  createdAt: z.date(),
+  isRead: z.boolean(),
+});
+
+export type Reply = z.infer<typeof ReplySchema>;
+
+export const ChatMessageSchema = z.object({
+  id: UuidSchema,
+  chatId: UuidSchema,
+  senderId: UuidSchema.nullable(),
+  content: z.string().nullable(),
+  type: z.enum(["TEXT", "IMAGE", "SYSTEM_EVENT"]),
+  metadata: JsonValueSchema.nullable(),
+  createdAt: z.date(),
+  replyToId: UuidSchema.nullable(),
+  replyTo: ReplySchema.nullable().optional(),
+  isRead: z.boolean(),
+});
+
+export type MessageType = z.infer<typeof ChatMessageSchema>;

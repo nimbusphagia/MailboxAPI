@@ -71,21 +71,28 @@ export async function getGroupChatById(
     },
     include: {
       members: { include: { user: { omit: { passwordHash: true } } } },
-      messages: true,
+      messages: {
+        include: {
+          replyTo: {
+            include: {
+              sender: { omit: { passwordHash: true } },
+            },
+          },
+        },
+      },
       createdBy: { omit: { passwordHash: true } },
     },
   });
+
   if (!chat) throw new NotFoundError("Chat doesn't exist");
 
   const primaryRaw = chat.members.find((m) => m.user!.id === currentUserId);
   if (!primaryRaw) throw new NotFoundError("Chat member not found");
-  const primaryMember = { ...primaryRaw.user!, role: primaryRaw.role };
 
+  const primaryMember = { ...primaryRaw.user!, role: primaryRaw.role };
   const secondaryMembers = chat.members
     .filter((m) => m.user!.id !== currentUserId)
-    .map((m) => {
-      return { ...m.user!, role: m.role };
-    });
+    .map((m) => ({ ...m.user!, role: m.role }));
 
   const contacts = await prisma.contact.findMany({
     where: {
@@ -93,8 +100,46 @@ export async function getGroupChatById(
       userId: { in: secondaryMembers.map((m) => m.id) },
     },
   });
-
   const contactMap = new Map(contacts.map((c) => [c.userId, c.nickname]));
+
+  const memberIds = new Set(
+    chat.members.map((m) => m.user?.id).filter(Boolean),
+  );
+  const extraSenderIds = [
+    ...new Set(
+      chat.messages
+        .map((m) => m.replyTo?.senderId)
+        .filter((sid): sid is string => !!sid && !memberIds.has(sid)),
+    ),
+  ];
+
+  if (extraSenderIds.length > 0) {
+    const extraContacts = await prisma.contact.findMany({
+      where: {
+        ownerId: currentUserId,
+        userId: { in: extraSenderIds },
+      },
+    });
+    for (const c of extraContacts) {
+      contactMap.set(c.userId, c.nickname);
+    }
+  }
+
+  const messagesWithReply = chat.messages.map((message) => {
+    if (!message.replyTo) return { ...message, replyTo: undefined };
+
+    const { sender, ...replyToRest } = message.replyTo;
+    const replyToNickname = sender ? (contactMap.get(sender.id) ?? null) : null;
+
+    return {
+      ...message,
+      replyTo: {
+        ...replyToRest,
+        sender: sender ? { ...sender, nickname: replyToNickname } : null,
+      },
+    };
+  });
+
   return {
     id: chat.id,
     isGroup: chat.isGroup,
@@ -107,7 +152,7 @@ export async function getGroupChatById(
       ...m,
       nickname: contactMap.get(m.id) ?? null,
     })),
-    messages: chat.messages,
+    messages: messagesWithReply,
   };
 }
 
