@@ -76,11 +76,17 @@ export const GroupResponseSchema = z.object({
   imgUrl: z.url().optional(),
   isGroup: z.boolean(),
   createdAt: z.date(),
-  primaryMember: SafeUserSchema,
-  secondaryMembers: z.array(SafeUserSchema.extend({ nickname: z.string().nullable() })),
+  createdBy: SafeUserSchema.nullable(),
+  primaryMember: SafeUserSchema.extend({
+    role: z.enum(["MEMBER", "ADMIN", "OWNER"]),
+  }),
+  secondaryMembers: z.array(
+    SafeUserSchema.extend({
+      nickname: z.string().nullable(),
+      role: z.enum(["MEMBER", "ADMIN", "OWNER"]),
+    }),
+  ),
   messages: z.array(ChatMessageSchema),
 });
 
 export type GroupResponse = z.infer<typeof GroupResponseSchema>;
-
-

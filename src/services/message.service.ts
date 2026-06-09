@@ -1,14 +1,15 @@
 import prisma from "../config/prisma";
 import { NotFoundError } from "../errors";
-import { ChatResponse } from "../schemas/chat.schema";
+import { ChatResponse, GroupResponse } from "../schemas/chat.schema";
 import type { MessageCreate, MessageType } from "../schemas/message.schema";
 import { UuidType } from "../schemas/util.schema";
 import { getChatById } from "./chat.service";
+import { getGroupChatById } from "./group.service";
 
 export async function createMessage(
   data: MessageCreate,
   currentUserId: UuidType,
-): Promise<ChatResponse> {
+): Promise<ChatResponse | GroupResponse> {
   const existingChat = await prisma.chat.findUnique({
     where: {
       id: data.chatId,
@@ -21,7 +22,9 @@ export async function createMessage(
   await prisma.chatMessage.create({
     data: { ...data, senderId: currentUserId },
   });
-  return getChatById(data.chatId, currentUserId);
+  return existingChat.isGroup
+    ? getGroupChatById(data.chatId, currentUserId)
+    : getChatById(data.chatId, currentUserId);
 }
 
 export async function editMessage(

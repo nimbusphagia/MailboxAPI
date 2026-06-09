@@ -70,20 +70,22 @@ export async function getGroupChatById(
       members: { some: { userId: currentUserId } },
     },
     include: {
-      members: { include: safeUserInclude },
+      members: { include: { user: { omit: { passwordHash: true } } } },
       messages: true,
+      createdBy: { omit: { passwordHash: true } },
     },
   });
   if (!chat) throw new NotFoundError("Chat doesn't exist");
 
-  const primaryMember = chat.members.find(
-    (m) => m.user!.id === currentUserId,
-  )?.user;
-  if (!primaryMember) throw new NotFoundError("Chat member not found");
+  const primaryRaw = chat.members.find((m) => m.user!.id === currentUserId);
+  if (!primaryRaw) throw new NotFoundError("Chat member not found");
+  const primaryMember = { ...primaryRaw.user!, role: primaryRaw.role };
 
   const secondaryMembers = chat.members
     .filter((m) => m.user!.id !== currentUserId)
-    .map((m) => m.user!);
+    .map((m) => {
+      return { ...m.user!, role: m.role };
+    });
 
   const contacts = await prisma.contact.findMany({
     where: {
@@ -99,6 +101,7 @@ export async function getGroupChatById(
     name: chat.name!,
     imgUrl: chat.imgUrl!,
     createdAt: chat.createdAt,
+    createdBy: chat.createdBy,
     primaryMember,
     secondaryMembers: secondaryMembers.map((m) => ({
       ...m,
