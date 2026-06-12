@@ -11,10 +11,12 @@ import { safeUserInclude } from "./utils";
 
 export async function getChatsById(
   currentUserId: UuidType,
+  isArchived?: boolean,
 ): Promise<ChatLazy[]> {
   const raw = await prisma.chat.findMany({
     where: {
       isGroup: false,
+      isArchived: isArchived ?? false,
       members: {
         some: {
           userId: currentUserId,
@@ -25,6 +27,7 @@ export async function getChatsById(
       id: true,
       createdAt: true,
       isGroup: true,
+      isArchived: true,
       members: {
         where: {
           userId: {

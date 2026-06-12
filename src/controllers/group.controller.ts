@@ -62,7 +62,8 @@ export async function getGroups(
   try {
     if (!req.user) throw new UnauthorizedError("Not authenticated");
     const currentUserId = req.user.id;
-    const groups = await getGroupChatsById(currentUserId);
+    const isArchived: boolean = !!req.query.archived;
+    const groups = await getGroupChatsById(currentUserId, isArchived);
     res.status(200).json(groups);
   } catch (err) {
     next(err);

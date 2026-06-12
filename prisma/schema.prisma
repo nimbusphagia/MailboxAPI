@@ -47,6 +47,7 @@ model Chat {
   createdById String?       @db.Uuid
   createdAt   DateTime      @default(now())
   isGroup     Boolean       @default(false)
+  isArchived  Boolean  @default(false)
   members     ChatMember[]
   messages    ChatMessage[]
 }

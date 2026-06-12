@@ -16,7 +16,8 @@ export async function getAll(
   try {
     if (!req.user) throw new UnauthorizedError("Not authenticated");
     const currentUserId = req.user.id;
-    const chats = await getChatsById(currentUserId);
+    const isArchived: boolean = !!req.query.archived;
+    const chats = await getChatsById(currentUserId, isArchived);
     res.status(200).json(chats);
   } catch (err) {
     next(err);

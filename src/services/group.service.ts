@@ -20,10 +20,12 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 
 export async function getGroupChatsById(
   currentUserId: UuidType,
+  isArchived?: boolean,
 ): Promise<GroupLazy[]> {
   const raw = await prisma.chat.findMany({
     where: {
       isGroup: true,
+      isArchived: isArchived ?? false,
       members: {
         some: {
           userId: currentUserId,
@@ -34,6 +36,7 @@ export async function getGroupChatsById(
       id: true,
       createdAt: true,
       isGroup: true,
+      isArchived: true,
       name: true,
       imgUrl: true,
       messages: {
