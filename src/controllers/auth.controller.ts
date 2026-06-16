@@ -23,6 +23,23 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     next(err);
   }
 }
+export async function logoutUser(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      partitioned: true,
+    });
+    res.status(200).json({ message: "Logout successful" });
+  } catch (err) {
+    next(err);
+  }
+}
 export async function register(
   req: Request,
   res: Response,
