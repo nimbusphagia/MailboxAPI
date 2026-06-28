@@ -4,6 +4,7 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
+    "seed": "tsx prisma/seed.ts",
     "dev": "tsx --watch src/index.ts",
     "build": "tsup",
     "test": "dotenv -e .env.test -- vitest",

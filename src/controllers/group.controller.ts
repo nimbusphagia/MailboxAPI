@@ -17,6 +17,7 @@ import {
   ChatMemberInputSchema,
 } from "../schemas/member.schema";
 import { uploadImage } from "../utils/uploadImage";
+import { getProfilePicture } from "../services/assets.service";
 
 export async function createGroupChat(
   req: Request,
@@ -30,6 +31,10 @@ export async function createGroupChat(
     if (req.file) {
       const result: any = await uploadImage(req.file.buffer, "msg");
       data.imgUrl = result.secure_url;
+    }
+    if (req.body.asset) {
+      const validAsset = await getProfilePicture(req.body.asset);
+      data.imgUrl = validAsset?.url ?? undefined;
     }
     const groupChat = await createGroupChatServ(data, currentUserId);
     res.status(201).json(groupChat);

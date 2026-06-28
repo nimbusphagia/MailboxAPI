@@ -88,3 +88,8 @@ enum ChatMessageType {
   IMAGE
   SYSTEM_EVENT
 }
+model ProfilePicture{
+id String @id @default(uuid(7)) @db.Uuid
+name String
+url String
+}
