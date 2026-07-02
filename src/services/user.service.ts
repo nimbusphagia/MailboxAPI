@@ -15,6 +15,8 @@ import {
   ValidationError,
 } from "../errors";
 import { validateService } from "./utils";
+import { ProfilePicture } from "../schemas/assets.schema";
+import { catchall } from "zod/mini";
 
 export async function getUsers(): Promise<SafeUser[]> {
   return prisma.user.findMany({
@@ -38,8 +40,25 @@ export async function createUser({
 }: UserInput): Promise<SafeUser> {
   await validateUsername(username);
   const passwordHash = await bcrypt.hash(password, 12);
+  const data: {
+    username: string;
+    passwordHash: string;
+    name: string;
+    imgUrl?: string;
+  } = { username, passwordHash, name };
+  try {
+    const profilePicture: ProfilePicture = await prisma.$queryRaw`
+  SELECT * FROM "ProfilePicture" 
+  ORDER BY RANDOM() 
+  LIMIT 1
+`;
+    data.imgUrl = profilePicture.url;
+  } catch (err) {
+    console.error(err);
+  }
+
   return prisma.user.create({
-    data: { username, passwordHash, name },
+    data,
     omit: { passwordHash: true },
   });
 }

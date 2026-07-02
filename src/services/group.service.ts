@@ -25,10 +25,10 @@ export async function getGroupChatsById(
   const raw = await prisma.chat.findMany({
     where: {
       isGroup: true,
-      isArchived: isArchived ?? false,
       members: {
         some: {
           userId: currentUserId,
+          isArchived: isArchived ?? false,
         },
       },
     },
@@ -36,7 +36,6 @@ export async function getGroupChatsById(
       id: true,
       createdAt: true,
       isGroup: true,
-      isArchived: true,
       name: true,
       imgUrl: true,
       messages: {
@@ -51,6 +50,7 @@ export async function getGroupChatsById(
   const mapped = raw.map((chat) =>
     GroupLazySchema.parse({
       ...chat,
+      isArchived: isArchived ?? false,
       lastMessage: chat.messages[0] ?? undefined,
     }),
   );

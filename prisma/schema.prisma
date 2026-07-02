@@ -19,7 +19,7 @@ model User {
   username     String        @unique
   passwordHash String
   name         String
-  imgUrl       String        @default("https://res.cloudinary.com/dlsa973vu/image/upload/q_auto/f_auto/v1775944983/370_eo3prg.webp")
+  imgUrl       String        @default("https://res.cloudinary.com/dlsa973vu/image/upload/v1783002813/iconos-10_scaswx.jpg")
   contacts     Contact[]     @relation("OwnedContacts")
   contactOf    Contact[]     @relation("ContactOf")
   chats        Chat[]
@@ -47,7 +47,6 @@ model Chat {
   createdById String?       @db.Uuid
   createdAt   DateTime      @default(now())
   isGroup     Boolean       @default(false)
-  isArchived  Boolean  @default(false)
   members     ChatMember[]
   messages    ChatMessage[]
 }
@@ -59,6 +58,7 @@ model ChatMember {
   user   User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   userId String?        @db.Uuid
   role   ChatMemberRole @default(MEMBER)
+  isArchived  Boolean  @default(false)
 }
 
 enum ChatMemberRole {
