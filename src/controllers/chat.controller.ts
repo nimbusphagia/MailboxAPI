@@ -6,6 +6,7 @@ import {
   deleteChatServ,
   getChatById,
   getChatsById,
+  toggleArchived,
 } from "../services/chat.service";
 
 export async function getAll(
@@ -64,6 +65,21 @@ export async function deleteChat(
     const currentUserId = req.user.id;
     const chatId = UuidSchema.parse(req.params.id);
     await deleteChatServ(chatId, currentUserId);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+export async function archiveChat(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) throw new UnauthorizedError("Not authenticated");
+    const currentUserId = req.user.id;
+    const chatId = UuidSchema.parse(req.body.chatId);
+    await toggleArchived(chatId, currentUserId);
     res.status(204).end();
   } catch (err) {
     next(err);

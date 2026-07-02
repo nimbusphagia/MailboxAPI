@@ -17,6 +17,7 @@ import {
 import { validateService } from "./utils";
 import { ProfilePicture } from "../schemas/assets.schema";
 import { catchall } from "zod/mini";
+import { getRandomPicture } from "./assets.service";
 
 export async function getUsers(): Promise<SafeUser[]> {
   return prisma.user.findMany({
@@ -47,11 +48,7 @@ export async function createUser({
     imgUrl?: string;
   } = { username, passwordHash, name };
   try {
-    const profilePicture: ProfilePicture = await prisma.$queryRaw`
-  SELECT * FROM "ProfilePicture" 
-  ORDER BY RANDOM() 
-  LIMIT 1
-`;
+    const profilePicture: ProfilePicture = await getRandomPicture();
     data.imgUrl = profilePicture.url;
   } catch (err) {
     console.error(err);

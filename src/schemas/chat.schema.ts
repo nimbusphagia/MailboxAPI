@@ -18,6 +18,7 @@ export type ChatType = z.infer<typeof ChatSchema>;
 export const ChatResponseSchema = z.object({
   id: UuidSchema,
   isGroup: z.boolean(),
+  isArchived: z.boolean(),
   createdAt: z.date(),
   primaryMember: SafeUserSchema,
   secondaryMember: SafeUserSchema.extend({ nickname: z.string().nullable() }),
@@ -77,6 +78,7 @@ export const GroupResponseSchema = z.object({
   name: z.string().min(1),
   imgUrl: z.url().optional(),
   isGroup: z.boolean(),
+  isArchived: z.boolean(),
   createdAt: z.date(),
   createdBy: SafeUserSchema.nullable(),
   primaryMember: SafeUserSchema.extend({

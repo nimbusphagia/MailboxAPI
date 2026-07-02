@@ -16,6 +16,7 @@ export type ChatMemberPureType = z.infer<typeof ChatMemberModelSchema>;
 export const ChatMemberSchema = z.object({
   id: UuidSchema,
   chatId: UuidSchema,
+  isArchived: z.boolean(),
   user: SafeUserSchema.nullable(),
   userId: UuidSchema.nullable(),
   role: z.enum(["MEMBER", "ADMIN", "OWNER"]),
@@ -60,5 +61,3 @@ export const ChatMemberEditSchema = z.object({
 });
 
 export type ChatMemberEdit = z.infer<typeof ChatMemberEditSchema>;
-
-

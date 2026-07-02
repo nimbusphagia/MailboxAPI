@@ -15,8 +15,9 @@ import {
   ChatMemberOutput,
   ChatMemberEdit,
 } from "../schemas/member.schema";
-import { ChatMember } from "../generated/prisma/client";
+import { ChatMember, Prisma } from "../generated/prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
+import { getRandomPicture } from "./assets.service";
 
 export async function getGroupChatsById(
   currentUserId: UuidType,
@@ -67,119 +68,29 @@ export async function getGroupChatById(
   currentUserId: UuidType,
 ): Promise<GroupResponse> {
   const chat = await prisma.chat.findUnique({
-    where: {
-      id,
-      isGroup: true,
-      members: { some: { userId: currentUserId } },
-    },
-    include: {
-      members: { include: { user: { omit: { passwordHash: true } } } },
-      messages: {
-        include: {
-          replyTo: {
-            include: {
-              sender: { omit: { passwordHash: true } },
-            },
-          },
-        },
-      },
-      createdBy: { omit: { passwordHash: true } },
-    },
+    where: { id, isGroup: true, members: { some: { userId: currentUserId } } },
+    include: groupChatInclude,
   });
-
   if (!chat) throw new NotFoundError("Chat doesn't exist");
-
-  const primaryRaw = chat.members.find((m) => m.user!.id === currentUserId);
-  if (!primaryRaw) throw new NotFoundError("Chat member not found");
-
-  const primaryMember = { ...primaryRaw.user!, role: primaryRaw.role };
-  const secondaryMembers = chat.members
-    .filter((m) => m.user!.id !== currentUserId)
-    .map((m) => ({ ...m.user!, role: m.role }));
-
-  const contacts = await prisma.contact.findMany({
-    where: {
-      ownerId: currentUserId,
-      userId: { in: secondaryMembers.map((m) => m.id) },
-    },
-  });
-  const contactMap = new Map(contacts.map((c) => [c.userId, c.nickname]));
-
-  const memberIds = new Set(
-    chat.members.map((m) => m.user?.id).filter(Boolean),
-  );
-  const extraSenderIds = [
-    ...new Set(
-      chat.messages
-        .map((m) => m.replyTo?.senderId)
-        .filter((sid): sid is string => !!sid && !memberIds.has(sid)),
-    ),
-  ];
-
-  if (extraSenderIds.length > 0) {
-    const extraContacts = await prisma.contact.findMany({
-      where: {
-        ownerId: currentUserId,
-        userId: { in: extraSenderIds },
-      },
-    });
-    for (const c of extraContacts) {
-      contactMap.set(c.userId, c.nickname);
-    }
-  }
-
-  const messagesWithReply = chat.messages.map((message) => {
-    if (!message.replyTo) return { ...message, replyTo: undefined };
-
-    const { sender, ...replyToRest } = message.replyTo;
-    const replyToNickname = sender ? (contactMap.get(sender.id) ?? null) : null;
-
-    return {
-      ...message,
-      replyTo: {
-        ...replyToRest,
-        sender: sender ? { ...sender, nickname: replyToNickname } : null,
-      },
-    };
-  });
-
-  return {
-    id: chat.id,
-    isGroup: chat.isGroup,
-    name: chat.name!,
-    imgUrl: chat.imgUrl!,
-    createdAt: chat.createdAt,
-    createdBy: chat.createdBy,
-    primaryMember,
-    secondaryMembers: secondaryMembers.map((m) => ({
-      ...m,
-      nickname: contactMap.get(m.id) ?? null,
-    })),
-    messages: messagesWithReply,
-  };
+  return buildGroupChatResponse(chat, currentUserId);
 }
 
 export async function createGroupChatServ(
   { name, imgUrl, members }: GroupChatInput,
   currentUserId: UuidType,
-): Promise<GroupChatType> {
+): Promise<GroupResponse> {
   const existingGroup = await prisma.chat.findFirst({
-    where: {
-      isGroup: true,
-      createdById: currentUserId,
-      name,
-    },
+    where: { isGroup: true, createdById: currentUserId, name },
   });
   if (existingGroup) throw new ConflictError("Chat already exists");
+  let chat;
   try {
-    return prisma.chat.create({
+    chat = await prisma.chat.create({
       data: {
         isGroup: true,
         createdById: currentUserId,
         name,
-        imgUrl:
-          imgUrl ??
-          "https://res.cloudinary.com/dlsa973vu/image/upload/v1780933463/chiikawa-and-hachiwares-friendship-is-so-sweet-v0-ke02d73xppre1_cgd6q9.jpg",
+        imgUrl,
         members: {
           create: [
             { userId: currentUserId, role: "OWNER" },
@@ -187,12 +98,7 @@ export async function createGroupChatServ(
           ],
         },
       },
-      include: {
-        members: {
-          include: safeUserInclude,
-        },
-        messages: true,
-      },
+      include: groupChatInclude,
     });
   } catch (e) {
     if (e instanceof PrismaClientKnownRequestError && e.code === "P2003") {
@@ -200,8 +106,9 @@ export async function createGroupChatServ(
     }
     throw e;
   }
-}
 
+  return buildGroupChatResponse(chat, currentUserId);
+}
 export async function editGroupInfoServ(
   { name, imgUrl, id }: GroupChatInput,
   currentUserId: UuidType,
@@ -332,4 +239,91 @@ export async function editGroupMemberRole(
     throw new ForbiddenError("Cannot change your own role");
 
   return prisma.chatMember.update({ where: { id }, data: { role } });
+}
+
+/*Helper functions*/
+const groupMemberSelect = { ...safeUserInclude, isArchived: true, role: true };
+
+const groupChatMessagesInclude = {
+  include: {
+    replyTo: {
+      include: {
+        sender: { omit: { passwordHash: true } as const },
+      },
+    },
+  },
+};
+
+const groupChatInclude = {
+  members: { select: groupMemberSelect },
+  messages: groupChatMessagesInclude,
+  createdBy: { omit: { passwordHash: true } as const },
+};
+
+type GroupChatWithRelations = Prisma.ChatGetPayload<{
+  include: typeof groupChatInclude;
+}>;
+
+async function buildGroupChatResponse(
+  chat: GroupChatWithRelations,
+  currentUserId: UuidType,
+): Promise<GroupResponse> {
+  const primaryRaw = chat.members.find((m) => m.user!.id === currentUserId);
+  if (!primaryRaw) throw new NotFoundError("Chat member not found");
+  const primaryMember = { ...primaryRaw.user!, role: primaryRaw.role };
+  const secondaryMembers = chat.members
+    .filter((m) => m.user!.id !== currentUserId)
+    .map((m) => ({ ...m.user!, role: m.role }));
+  const contacts = await prisma.contact.findMany({
+    where: {
+      ownerId: currentUserId,
+      userId: { in: secondaryMembers.map((m) => m.id) },
+    },
+  });
+  const contactMap = new Map(contacts.map((c) => [c.userId, c.nickname]));
+  const memberIds = new Set(
+    chat.members.map((m) => m.user?.id).filter(Boolean),
+  );
+  const extraSenderIds = [
+    ...new Set(
+      chat.messages
+        .map((m) => m.replyTo?.senderId)
+        .filter((sid): sid is string => !!sid && !memberIds.has(sid)),
+    ),
+  ];
+  if (extraSenderIds.length > 0) {
+    const extraContacts = await prisma.contact.findMany({
+      where: { ownerId: currentUserId, userId: { in: extraSenderIds } },
+    });
+    for (const c of extraContacts) {
+      contactMap.set(c.userId, c.nickname);
+    }
+  }
+  const messagesWithReply = chat.messages.map((message) => {
+    if (!message.replyTo) return { ...message, replyTo: undefined };
+    const { sender, ...replyToRest } = message.replyTo;
+    const replyToNickname = sender ? (contactMap.get(sender.id) ?? null) : null;
+    return {
+      ...message,
+      replyTo: {
+        ...replyToRest,
+        sender: sender ? { ...sender, nickname: replyToNickname } : null,
+      },
+    };
+  });
+  return {
+    id: chat.id,
+    isGroup: chat.isGroup,
+    isArchived: primaryRaw.isArchived,
+    name: chat.name!,
+    imgUrl: chat.imgUrl!,
+    createdAt: chat.createdAt,
+    createdBy: chat.createdBy,
+    primaryMember,
+    secondaryMembers: secondaryMembers.map((m) => ({
+      ...m,
+      nickname: contactMap.get(m.id) ?? null,
+    })),
+    messages: messagesWithReply,
+  };
 }

@@ -8,6 +8,7 @@ import {
   ChatType,
 } from "../schemas/chat.schema";
 import { safeUserInclude } from "./utils";
+import { Prisma } from "../generated/prisma/client";
 
 export async function getChatsById(
   currentUserId: UuidType,
@@ -79,88 +80,19 @@ export async function getChatById(
   const raw = await prisma.chat.findUnique({
     where: { id, isGroup: false, members: { some: { userId: currentUserId } } },
     include: {
-      members: { select: safeUserInclude },
-      messages: {
-        include: {
-          replyTo: {
-            include: {
-              sender: { omit: { passwordHash: true } },
-            },
-          },
-        },
-      },
+      members: { select: memberSelect },
+      messages: chatMessagesInclude,
     },
     omit: { name: true, imgUrl: true },
   });
-
   if (!raw) throw new NotFoundError("Chat doesn't exist");
-
-  const { id: chatId, isGroup, createdAt, members, messages } = raw;
-
-  const primaryRaw = members.find((m) => m.user!.id === currentUserId)?.user;
-  const secondaryRaw = members.find((m) => m.user!.id !== currentUserId)?.user;
-
-  if (!primaryRaw || !secondaryRaw)
-    throw new NotFoundError("Chat members not found");
-
-  const secondaryContact = await prisma.contact.findUnique({
-    where: {
-      ownerId_userId: { ownerId: currentUserId, userId: secondaryRaw.id },
-    },
-  });
-
-  const replyToSenderIds = [
-    ...new Set(
-      messages
-        .map((m) => m.replyTo?.senderId)
-        .filter((sid): sid is string => !!sid),
-    ),
-  ];
-
-  const replyToContacts = await prisma.contact.findMany({
-    where: {
-      ownerId: currentUserId,
-      userId: { in: replyToSenderIds },
-    },
-  });
-
-  const replyToContactMap = new Map(
-    replyToContacts.map((c) => [c.userId, c.nickname]),
-  );
-
-  const messagesWithReply = messages.map((message) => {
-    if (!message.replyTo) return { ...message, replyTo: undefined };
-
-    const { sender, ...replyToRest } = message.replyTo;
-    const replyToNickname = sender
-      ? (replyToContactMap.get(sender.id) ?? null)
-      : null;
-
-    return {
-      ...message,
-      replyTo: {
-        ...replyToRest,
-        sender: sender ? { ...sender, nickname: replyToNickname } : null,
-      },
-    };
-  });
-
-  return {
-    id: chatId,
-    isGroup,
-    createdAt,
-    primaryMember: primaryRaw,
-    secondaryMember: {
-      ...secondaryRaw,
-      nickname: secondaryContact ? secondaryContact.nickname : null,
-    },
-    messages: messagesWithReply,
-  };
+  return buildChatResponse(raw, currentUserId);
 }
+
 export async function createChatServ(
   contactId: UuidType,
   currentUserId: UuidType,
-): Promise<ChatType> {
+): Promise<ChatResponse> {
   const existingChat = await prisma.chat.findFirst({
     where: {
       isGroup: false,
@@ -171,7 +103,8 @@ export async function createChatServ(
     },
   });
   if (existingChat) throw new ConflictError("Chat already exists");
-  return prisma.chat.create({
+
+  const raw = await prisma.chat.create({
     data: {
       isGroup: false,
       createdById: currentUserId,
@@ -180,16 +113,13 @@ export async function createChatServ(
       },
     },
     include: {
-      members: {
-        include: safeUserInclude,
-      },
-      messages: true,
+      members: { select: memberSelect },
+      messages: chatMessagesInclude,
     },
-    omit: {
-      name: true,
-      imgUrl: true,
-    },
+    omit: { name: true, imgUrl: true },
   });
+
+  return buildChatResponse(raw, currentUserId);
 }
 export async function deleteChatServ(
   id: UuidType,
@@ -204,4 +134,113 @@ export async function deleteChatServ(
   if (!existingChat) throw new NotFoundError("Chat not found");
 
   await prisma.chat.delete({ where: { id } });
+}
+export async function toggleArchived(
+  chatId: UuidType,
+  currentUserId: UuidType,
+): Promise<void> {
+  const chatMember = await prisma.chatMember.findFirst({
+    where: {
+      chatId,
+      userId: currentUserId,
+    },
+    select: {
+      id: true,
+      isArchived: true,
+    },
+  });
+  if (!chatMember) throw new NotFoundError("Chat member not found");
+  await prisma.chatMember.update({
+    where: { id: chatMember.id },
+    data: { isArchived: !chatMember.isArchived },
+  });
+}
+
+/* Helper functions*/
+type ChatWithRelations = Prisma.ChatGetPayload<{
+  include: {
+    members: { select: typeof memberSelect };
+    messages: {
+      include: {
+        replyTo: { include: { sender: { omit: { passwordHash: true } } } };
+      };
+    };
+  };
+  omit: { name: true; imgUrl: true };
+}>;
+
+const memberSelect = { ...safeUserInclude, isArchived: true };
+
+const chatMessagesInclude = {
+  include: {
+    replyTo: {
+      include: {
+        sender: { omit: { passwordHash: true } as const },
+      },
+    },
+  },
+};
+
+async function buildChatResponse(
+  raw: ChatWithRelations,
+  currentUserId: UuidType,
+): Promise<ChatResponse> {
+  const { id: chatId, isGroup, createdAt, members, messages } = raw;
+
+  const primaryRaw = members.find((m) => m.user!.id === currentUserId);
+  const secondaryRaw = members.find((m) => m.user!.id !== currentUserId);
+  if (!primaryRaw?.user || !secondaryRaw?.user)
+    throw new NotFoundError("Chat members not found");
+
+  const secondaryContact = await prisma.contact.findUnique({
+    where: {
+      ownerId_userId: { ownerId: currentUserId, userId: secondaryRaw.user.id },
+    },
+  });
+
+  const replyToSenderIds = [
+    ...new Set(
+      messages
+        .map((m) => m.replyTo?.senderId)
+        .filter((sid): sid is string => !!sid),
+    ),
+  ];
+
+  const replyToContacts = replyToSenderIds.length
+    ? await prisma.contact.findMany({
+        where: { ownerId: currentUserId, userId: { in: replyToSenderIds } },
+      })
+    : [];
+
+  const replyToContactMap = new Map(
+    replyToContacts.map((c) => [c.userId, c.nickname]),
+  );
+
+  const messagesWithReply = messages.map((message) => {
+    if (!message.replyTo) return { ...message, replyTo: undefined };
+    const { sender, ...replyToRest } = message.replyTo;
+    const replyToNickname = sender
+      ? (replyToContactMap.get(sender.id) ?? null)
+      : null;
+    return {
+      ...message,
+      replyTo: {
+        ...replyToRest,
+        sender: sender ? { ...sender, nickname: replyToNickname } : null,
+      },
+    };
+  });
+
+  return {
+    id: chatId,
+    isGroup,
+    isArchived: primaryRaw.isArchived,
+    createdAt,
+    primaryMember: primaryRaw.user,
+    secondaryMember: {
+      ...secondaryRaw.user,
+      nickname: secondaryContact ? secondaryContact.nickname : null,
+    },
+    messages: messagesWithReply,
+  };
 }
