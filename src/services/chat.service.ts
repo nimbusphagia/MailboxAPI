@@ -1,12 +1,7 @@
 import prisma from "../config/prisma";
 import type { UuidType } from "../schemas/util.schema";
 import { ConflictError, NotFoundError } from "../errors";
-import {
-  ChatLazy,
-  ChatLazySchema,
-  ChatResponse,
-  ChatType,
-} from "../schemas/chat.schema";
+import { ChatLazy, ChatLazySchema, ChatResponse } from "../schemas/chat.schema";
 import { safeUserInclude } from "./utils";
 import { Prisma } from "../generated/prisma/client";
 

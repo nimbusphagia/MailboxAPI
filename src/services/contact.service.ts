@@ -12,7 +12,15 @@ export async function getContactsById(
   currentUserId: UuidType,
 ): Promise<ContactType[]> {
   return prisma.contact.findMany({
-    where: { ownerId: currentUserId },
+    where: { ownerId: currentUserId, isBlocked: false },
+    include: safeUserInclude,
+  });
+}
+export async function getBlockedContacts(
+  currentUserId: UuidType,
+): Promise<ContactType[]> {
+  return prisma.contact.findMany({
+    where: { ownerId: currentUserId, isBlocked: true },
     include: safeUserInclude,
   });
 }

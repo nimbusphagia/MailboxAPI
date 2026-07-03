@@ -1,18 +1,40 @@
 import { NextFunction, Request, Response } from "express";
 import { UuidSchema } from "../schemas/util.schema";
-import { changePassword, deleteUserServ, editUser, getUserById, getUsers } from "../services/user.service";
-import { UserDeleteSchema, UserEditInputSchema, UserEditPasswordSchema } from "../schemas/user.schema";
+import {
+  changePassword,
+  deleteUserServ,
+  editUser,
+  getUserById,
+  getUsers,
+} from "../services/user.service";
+import {
+  UserDeleteSchema,
+  UserEditInputSchema,
+  UserEditPasswordSchema,
+} from "../schemas/user.schema";
 import { UnauthorizedError } from "../errors";
 
-export async function getAll(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function getAll(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
-    const users = await getUsers();
+    if (!req.user) {
+      throw new UnauthorizedError("Not authenticated");
+    }
+    const currentUserId = req.user.id;
+    const users = await getUsers(currentUserId);
     res.status(200).json(users);
   } catch (err) {
     next(err);
   }
 }
-export async function getById(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function getById(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
     const id = UuidSchema.parse(req.params.id);
     const user = await getUserById(id);
@@ -22,7 +44,11 @@ export async function getById(req: Request, res: Response, next: NextFunction): 
   }
 }
 
-export async function edit(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function edit(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
     if (!req.user) throw new UnauthorizedError("Not authenticated");
     const data = UserEditInputSchema.parse({ ...req.body, id: req.params.id });
@@ -32,7 +58,11 @@ export async function edit(req: Request, res: Response, next: NextFunction): Pro
     next(err);
   }
 }
-export async function deleteUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function deleteUser(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
     if (!req.user) throw new UnauthorizedError("Not authenticated");
     const data = UserDeleteSchema.parse({ ...req.body, id: req.params.id });
@@ -42,13 +72,20 @@ export async function deleteUser(req: Request, res: Response, next: NextFunction
     next(err);
   }
 }
-export async function editPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function editPassword(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   try {
     if (!req.user) throw new UnauthorizedError("Not authenticated");
-    const data = UserEditPasswordSchema.parse({ ...req.body, id: req.params.id });
+    const data = UserEditPasswordSchema.parse({
+      ...req.body,
+      id: req.params.id,
+    });
     const user = await changePassword(data, req.user.id);
     res.status(200).json(user);
   } catch (err) {
-    next(err)
+    next(err);
   }
 }

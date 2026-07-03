@@ -5,6 +5,7 @@ import {
   createContact,
   deleteContactServ,
   editNicknameServ,
+  getBlockedContacts,
   getContactById,
   getContactsById,
   toggleBlock,
@@ -20,6 +21,20 @@ export async function getAll(
     if (!req.user) throw new UnauthorizedError("Not authenticated");
     const currentUserId = req.user.id;
     const contacts = await getContactsById(currentUserId);
+    res.status(200).json(contacts);
+  } catch (err) {
+    next(err);
+  }
+}
+export async function getBlocked(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) throw new UnauthorizedError("Not authenticated");
+    const currentUserId = req.user.id;
+    const contacts = await getBlockedContacts(currentUserId);
     res.status(200).json(contacts);
   } catch (err) {
     next(err);

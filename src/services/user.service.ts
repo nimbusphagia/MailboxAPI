@@ -16,11 +16,27 @@ import {
 } from "../errors";
 import { validateService } from "./utils";
 import { ProfilePicture } from "../schemas/assets.schema";
-import { catchall } from "zod/mini";
 import { getRandomPicture } from "./assets.service";
 
-export async function getUsers(): Promise<SafeUser[]> {
+export async function getUsers(currentUserId: UuidType): Promise<SafeUser[]> {
   return prisma.user.findMany({
+    where: {
+      id: { not: currentUserId },
+      NOT: {
+        OR: [
+          {
+            contactOf: {
+              some: { ownerId: currentUserId, isBlocked: true },
+            },
+          },
+          {
+            contacts: {
+              some: { userId: currentUserId, isBlocked: true },
+            },
+          },
+        ],
+      },
+    },
     omit: {
       passwordHash: true,
     },

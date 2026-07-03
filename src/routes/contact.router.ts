@@ -4,6 +4,7 @@ import {
   deleteContact,
   editNickname,
   getAll,
+  getBlocked,
   getById,
   toggleIsBlocked,
 } from "../controllers/contact.controller";
@@ -11,6 +12,7 @@ import {
 const contactRouter = Router();
 
 contactRouter.get("/", getAll);
+contactRouter.get("/blocked", getBlocked);
 contactRouter.get("/:contactId", getById);
 contactRouter.post("/", create);
 contactRouter.patch("/:contactId", editNickname);

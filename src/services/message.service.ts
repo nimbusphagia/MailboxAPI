@@ -1,5 +1,5 @@
 import prisma from "../config/prisma";
-import { NotFoundError } from "../errors";
+import { ForbiddenError, NotFoundError } from "../errors";
 import { ChatResponse, GroupResponse } from "../schemas/chat.schema";
 import type { MessageCreate, MessageType } from "../schemas/message.schema";
 import { UuidType } from "../schemas/util.schema";
@@ -17,8 +17,33 @@ export async function createMessage(
         some: { userId: currentUserId },
       },
     },
+    include: {
+      members: { select: { userId: true } },
+    },
   });
   if (!existingChat) throw new NotFoundError("Chat not found");
+
+  if (!existingChat.isGroup) {
+    const otherUserId = existingChat.members.find(
+      (m) => m.userId !== currentUserId,
+    )?.userId;
+
+    if (otherUserId) {
+      const blockingContact = await prisma.contact.findFirst({
+        where: {
+          isBlocked: true,
+          OR: [
+            { ownerId: currentUserId, userId: otherUserId },
+            { ownerId: otherUserId, userId: currentUserId },
+          ],
+        },
+      });
+      if (blockingContact) {
+        throw new ForbiddenError("You cannot message this contact");
+      }
+    }
+  }
+
   await prisma.chatMessage.create({
     data: { ...data, senderId: currentUserId },
   });
