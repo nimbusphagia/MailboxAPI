@@ -34,7 +34,12 @@ export async function getChatsById(
             include: {
               contactOf: {
                 where: { ownerId: currentUserId },
-                select: { nickname: true },
+                select: { nickname: true, isBlocked: true },
+                take: 1,
+              },
+              contacts: {
+                where: { userId: currentUserId },
+                select: { isBlocked: true },
                 take: 1,
               },
             },
@@ -54,10 +59,15 @@ export async function getChatsById(
   const mapped = raw.map((chat) => {
     const member = chat.members[0];
     const nickname = member.user?.contactOf[0]?.nickname ?? null;
+    const isBlocked = Boolean(
+      member.user?.contactOf[0]?.isBlocked ||
+      member.user?.contacts[0]?.isBlocked,
+    );
 
     return ChatLazySchema.parse({
       ...chat,
       isArchived: isArchived ?? false,
+      isBlocked,
       otherMember: { ...member.user, nickname },
       lastMessage: chat.messages[0] ?? undefined,
     });
@@ -187,11 +197,17 @@ async function buildChatResponse(
   if (!primaryRaw?.user || !secondaryRaw?.user)
     throw new NotFoundError("Chat members not found");
 
-  const secondaryContact = await prisma.contact.findUnique({
+  const contactPair = await prisma.contact.findMany({
     where: {
-      ownerId_userId: { ownerId: currentUserId, userId: secondaryRaw.user.id },
+      OR: [
+        { ownerId: currentUserId, userId: secondaryRaw.user.id },
+        { ownerId: secondaryRaw.user.id, userId: currentUserId },
+      ],
     },
   });
+
+  const secondaryContact = contactPair.find((c) => c.ownerId === currentUserId);
+  const isBlocked = contactPair.some((c) => c.isBlocked);
 
   const replyToSenderIds = [
     ...new Set(
@@ -230,6 +246,7 @@ async function buildChatResponse(
     id: chatId,
     isGroup,
     isArchived: primaryRaw.isArchived,
+    isBlocked,
     createdAt,
     primaryMember: primaryRaw.user,
     secondaryMember: {

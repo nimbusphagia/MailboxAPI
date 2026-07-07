@@ -134,8 +134,7 @@ export async function deleteMember(
     if (!req.user) throw new UnauthorizedError("Not authenticated");
     const currentUserId = req.user.id;
     const data = ChatMemberDeleteSchema.parse({
-      id: req.params.memberId,
-      ...req.body,
+      ...req.params,
     });
     await deleteGroupMember(data, currentUserId);
     res.status(204).end();

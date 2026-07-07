@@ -19,6 +19,7 @@ export const ChatResponseSchema = z.object({
   id: UuidSchema,
   isGroup: z.boolean(),
   isArchived: z.boolean(),
+  isBlocked: z.boolean(),
   createdAt: z.date(),
   primaryMember: SafeUserSchema,
   secondaryMember: SafeUserSchema.extend({ nickname: z.string().nullable() }),
@@ -31,6 +32,7 @@ export const ChatLazySchema = z.object({
   id: UuidSchema,
   createdAt: z.date(),
   isGroup: z.boolean(),
+  isBlocked: z.boolean(),
   isArchived: z.boolean(),
   otherMember: SafeUserSchema.extend({
     nickname: z.string().nullable(),

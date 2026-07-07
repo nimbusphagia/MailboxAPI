@@ -17,7 +17,6 @@ import {
 } from "../schemas/member.schema";
 import { ChatMember, Prisma } from "../generated/prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
-import { getRandomPicture } from "./assets.service";
 
 export async function getGroupChatsById(
   currentUserId: UuidType,
@@ -175,37 +174,24 @@ export async function createMember(
     },
   });
 }
+
 export async function deleteGroupMember(
-  { id, chatId }: ChatMemberDelete,
+  { userId, chatId }: ChatMemberDelete,
   currentUserId: UuidType,
 ): Promise<void> {
-  const groupChat = await prisma.chat.findUnique({
-    where: {
-      id: chatId,
-      AND: [
-        {
-          members: {
-            some: {
-              userId: currentUserId,
-              role: { in: ["OWNER", "ADMIN"] },
-            },
-          },
-        },
-        {
-          members: {
-            some: { id },
-          },
-        },
-      ],
-    },
+  const memberToDelete = await prisma.chatMember.findFirst({
+    where: { userId, chatId },
   });
-  if (!groupChat) throw new NotFoundError("Invalid group or member");
-
-  const memberToDelete = await prisma.chatMember.findUnique({ where: { id } });
-  if (memberToDelete?.role === "OWNER")
+  if (!memberToDelete) throw new NotFoundError("Member not found");
+  if (memberToDelete.role === "OWNER")
     throw new ForbiddenError("Cannot remove the owner");
 
-  await prisma.chatMember.delete({ where: { id } });
+  const isCurrentUserOwner = await prisma.chatMember.findFirst({
+    where: { chatId, userId: currentUserId, role: "OWNER" },
+  });
+  if (!isCurrentUserOwner) throw new NotFoundError("Invalid group or member");
+
+  await prisma.chatMember.delete({ where: { id: memberToDelete.id } });
 }
 
 export async function editGroupMemberRole(

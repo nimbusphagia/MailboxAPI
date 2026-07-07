@@ -48,7 +48,7 @@ export const ChatMemberOutputSchema = z.object({
 export type ChatMemberOutput = z.infer<typeof ChatMemberOutputSchema>;
 
 export const ChatMemberDeleteSchema = z.object({
-  id: UuidSchema,
+  userId: UuidSchema,
   chatId: UuidSchema,
 });
 

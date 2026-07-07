@@ -16,7 +16,7 @@ const groupMemberRouter = Router();
 
 groupMemberRouter.post("/", createGroupMember);
 groupMemberRouter.patch("/role/:memberId", editMemberRole);
-groupMemberRouter.delete("/:memberId", deleteMember);
+groupMemberRouter.delete("/:chatId/:userId", deleteMember);
 
 groupRouter.use("/member", groupMemberRouter);
 
