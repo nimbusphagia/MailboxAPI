@@ -13,6 +13,8 @@ import {
   UserEditPasswordSchema,
 } from "../schemas/user.schema";
 import { UnauthorizedError } from "../errors";
+import { uploadImage } from "../utils/uploadImage";
+import { getProfilePicture } from "../services/assets.service";
 
 export async function getAll(
   req: Request,
@@ -51,8 +53,17 @@ export async function edit(
 ): Promise<void> {
   try {
     if (!req.user) throw new UnauthorizedError("Not authenticated");
-    const data = UserEditInputSchema.parse({ ...req.body, id: req.params.id });
-    const user = await editUser(data, req.user.id);
+    const data = UserEditInputSchema.parse(req.body);
+    const currentUserId = req.user.id;
+    if (req.file) {
+      const result: any = await uploadImage(req.file.buffer, "msg");
+      data.imgUrl = result.secure_url;
+    }
+    if (req.body.asset) {
+      const validAsset = await getProfilePicture(req.body.asset);
+      data.imgUrl = validAsset?.url ?? undefined;
+    }
+    const user = await editUser(data, currentUserId);
     res.status(200).json(user);
   } catch (err) {
     next(err);

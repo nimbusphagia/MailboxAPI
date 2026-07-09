@@ -9,6 +9,7 @@ import {
   editGroupMemberRole,
   getGroupChatById,
   getGroupChatsById,
+  leaveGroupServ,
 } from "../services/group.service";
 import { UuidSchema } from "../schemas/util.schema";
 import {
@@ -51,9 +52,17 @@ export async function editGroupInfo(
   try {
     if (!req.user) throw new UnauthorizedError("Not authenticated");
     const currentUserId = req.user.id;
-    const data = GroupChatInputSchema.parse({ id: req.params.id, ...req.body });
-    const contact = await editGroupInfoServ(data, currentUserId);
-    res.status(200).json(contact);
+    const data = GroupChatInputSchema.parse(req.body);
+    if (req.file) {
+      const result: any = await uploadImage(req.file.buffer, "msg");
+      data.imgUrl = result.secure_url;
+    }
+    if (req.body.asset) {
+      const validAsset = await getProfilePicture(req.body.asset);
+      data.imgUrl = validAsset?.url ?? undefined;
+    }
+    const group = await editGroupInfoServ(data, currentUserId);
+    res.status(200).json(group);
   } catch (err) {
     next(err);
   }
@@ -142,3 +151,19 @@ export async function deleteMember(
     next(err);
   }
 }
+export async function leaveGroup(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) throw new UnauthorizedError("Not authenticated");
+    const currentUserId = req.user.id;
+    const chatId = UuidSchema.parse(req.params.chatId);
+    await leaveGroupServ(chatId, currentUserId);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+``;

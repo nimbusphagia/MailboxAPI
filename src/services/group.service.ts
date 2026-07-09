@@ -111,7 +111,7 @@ export async function createGroupChatServ(
 export async function editGroupInfoServ(
   { name, imgUrl, id }: GroupChatInput,
   currentUserId: UuidType,
-): Promise<GroupChatType> {
+): Promise<GroupResponse> {
   const chat = await prisma.chat.findUnique({
     where: {
       id,
@@ -119,22 +119,18 @@ export async function editGroupInfoServ(
       createdById: currentUserId,
     },
   });
-
   if (!chat) throw new NotFoundError("Group chat not found");
 
-  return prisma.chat.update({
+  const updatedChat = await prisma.chat.update({
     where: { id },
     data: {
       ...(name && { name }),
       ...(imgUrl && { imgUrl }),
     },
-    include: {
-      members: {
-        include: safeUserInclude,
-      },
-      messages: true,
-    },
+    include: groupChatInclude,
   });
+
+  return buildGroupChatResponse(updatedChat, currentUserId);
 }
 export async function createMember(
   { chatId, userId }: ChatMemberInput,
@@ -192,6 +188,19 @@ export async function deleteGroupMember(
   if (!isCurrentUserOwner) throw new NotFoundError("Invalid group or member");
 
   await prisma.chatMember.delete({ where: { id: memberToDelete.id } });
+}
+export async function leaveGroupServ(
+  chatId: UuidType,
+  currentUserId: UuidType,
+): Promise<void> {
+  const member = await prisma.chatMember.findFirst({
+    where: { userId: currentUserId, chatId },
+  });
+  if (!member) throw new NotFoundError("Member not found");
+  if (member.role === "OWNER")
+    throw new ForbiddenError("Owner cannot leave the group");
+
+  await prisma.chatMember.delete({ where: { id: member.id } });
 }
 
 export async function editGroupMemberRole(

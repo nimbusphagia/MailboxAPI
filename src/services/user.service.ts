@@ -86,7 +86,7 @@ export async function editUser(
   });
   if (!existingUser) throw new NotFoundError("User not found");
 
-  if (username) await validateUsername(username);
+  if (username) await validateUsername(username, currentUserId);
 
   const data = {
     ...(username !== undefined && { username }),
@@ -126,9 +126,15 @@ export async function deleteUserServ(
   await prisma.user.delete({ where: { id } });
 }
 // UTILS
-async function validateUsername(username: string): Promise<void> {
-  const existingUser = await prisma.user.findUnique({
-    where: { username },
+async function validateUsername(
+  username: string,
+  currentUserId?: UuidType,
+): Promise<void> {
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      username,
+      ...(currentUserId && { id: { not: currentUserId } }),
+    },
     select: { id: true },
   });
   if (existingUser) {

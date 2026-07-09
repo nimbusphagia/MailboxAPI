@@ -8,6 +8,7 @@ import {
   deleteMember,
   editMemberRole,
   getGroups,
+  leaveGroup,
 } from "../controllers/group.controller";
 import upload from "../middleware/upload.middleware";
 
@@ -24,6 +25,7 @@ groupRouter.get("/", getGroups);
 groupRouter.get("/:id", getGroup);
 groupRouter.post("/", upload.single("image"), createGroupChat);
 groupRouter.delete("/:id", deleteChat);
+groupRouter.delete("/leave/:chatId", leaveGroup);
 groupRouter.put("/:id", editGroupInfo);
 
 export default groupRouter;
