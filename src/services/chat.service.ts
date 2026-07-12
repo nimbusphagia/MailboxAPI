@@ -1,6 +1,6 @@
 import prisma from "../config/prisma";
 import type { UuidType } from "../schemas/util.schema";
-import { ConflictError, NotFoundError } from "../errors";
+import { ConflictError, ForbiddenError, NotFoundError } from "../errors";
 import { ChatLazy, ChatLazySchema, ChatResponse } from "../schemas/chat.schema";
 import { safeUserInclude } from "./utils";
 import { Prisma } from "../generated/prisma/client";
@@ -98,6 +98,8 @@ export async function createChatServ(
   contactId: UuidType,
   currentUserId: UuidType,
 ): Promise<ChatResponse> {
+  if (contactId === currentUserId)
+    throw new ForbiddenError("Cannot create chat with yourself");
   const existingChat = await prisma.chat.findFirst({
     where: {
       isGroup: false,
@@ -106,8 +108,13 @@ export async function createChatServ(
         { members: { some: { userId: contactId } } },
       ],
     },
+    include: {
+      members: { select: memberSelect },
+      messages: chatMessagesInclude,
+    },
+    omit: { name: true, imgUrl: true },
   });
-  if (existingChat) throw new ConflictError("Chat already exists");
+  if (existingChat) return buildChatResponse(existingChat, currentUserId);
 
   const raw = await prisma.chat.create({
     data: {
