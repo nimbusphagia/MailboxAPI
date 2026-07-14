@@ -1,6 +1,5 @@
 import z from "zod";
 import {
-  ImageMetadataSchema,
   InputJsonValueSchema,
   JsonValueSchema,
   UuidSchema,
@@ -89,7 +88,6 @@ export const ReplySchema = z.object({
   type: z.enum(["TEXT", "IMAGE", "SYSTEM_EVENT"]),
   metadata: JsonValueSchema.nullable(),
   createdAt: z.date(),
-  isRead: z.boolean(),
 });
 
 export type Reply = z.infer<typeof ReplySchema>;
@@ -104,7 +102,6 @@ export const ChatMessageSchema = z.object({
   createdAt: z.date(),
   replyToId: UuidSchema.nullable(),
   replyTo: ReplySchema.nullable().optional(),
-  isRead: z.boolean(),
 });
 
 export type MessageType = z.infer<typeof ChatMessageSchema>;

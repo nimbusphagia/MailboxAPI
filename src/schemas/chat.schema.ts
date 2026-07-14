@@ -19,6 +19,7 @@ export const ChatResponseSchema = z.object({
   id: UuidSchema,
   isGroup: z.boolean(),
   isArchived: z.boolean(),
+  isRead: z.boolean(),
   isBlocked: z.boolean(),
   createdAt: z.date(),
   primaryMember: SafeUserSchema,
@@ -33,6 +34,7 @@ export const ChatLazySchema = z.object({
   createdAt: z.date(),
   isGroup: z.boolean(),
   isBlocked: z.boolean(),
+  isRead: z.boolean(),
   isArchived: z.boolean(),
   otherMember: SafeUserSchema.extend({
     nickname: z.string().nullable(),
@@ -69,6 +71,7 @@ export const GroupLazySchema = z.object({
   createdAt: z.date(),
   isGroup: z.boolean(),
   isArchived: z.boolean(),
+  isRead: z.boolean(),
   name: z.string().min(1),
   imgUrl: z.url().optional(),
   lastMessage: ChatMessageSchema.optional(),
@@ -81,6 +84,7 @@ export const GroupResponseSchema = z.object({
   imgUrl: z.url().optional(),
   isGroup: z.boolean(),
   isArchived: z.boolean(),
+  isRead: z.boolean(),
   createdAt: z.date(),
   createdBy: SafeUserSchema.nullable(),
   primaryMember: SafeUserSchema.extend({

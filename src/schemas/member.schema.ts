@@ -17,6 +17,7 @@ export const ChatMemberSchema = z.object({
   id: UuidSchema,
   chatId: UuidSchema,
   isArchived: z.boolean(),
+  isRead: z.boolean(),
   user: SafeUserSchema.nullable(),
   userId: UuidSchema.nullable(),
   role: z.enum(["MEMBER", "ADMIN", "OWNER"]),

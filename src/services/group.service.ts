@@ -1,7 +1,6 @@
 import prisma from "../config/prisma";
 import {
   GroupChatInput,
-  GroupChatType,
   GroupLazy,
   GroupLazySchema,
   GroupResponse,
@@ -17,6 +16,7 @@ import {
 } from "../schemas/member.schema";
 import { ChatMember, Prisma } from "../generated/prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
+import { readChat } from "./chat.service";
 
 export async function getGroupChatsById(
   currentUserId: UuidType,
@@ -38,6 +38,14 @@ export async function getGroupChatsById(
       isGroup: true,
       name: true,
       imgUrl: true,
+      members: {
+        where: { userId: currentUserId },
+        select: {
+          isRead: true,
+          isArchived: true,
+        },
+        take: 1,
+      },
       messages: {
         orderBy: {
           createdAt: "desc",
@@ -47,13 +55,19 @@ export async function getGroupChatsById(
     },
   });
 
-  const mapped = raw.map((chat) =>
-    GroupLazySchema.parse({
+  const mapped = raw.map((chat) => {
+    const selfMember = chat.members[0];
+    if (!selfMember) {
+      throw new NotFoundError("Chat member not found");
+    }
+
+    return GroupLazySchema.parse({
       ...chat,
-      isArchived: isArchived ?? false,
+      isArchived: selfMember.isArchived,
+      isRead: selfMember.isRead,
       lastMessage: chat.messages[0] ?? undefined,
-    }),
-  );
+    });
+  });
 
   return mapped.sort((a, b) => {
     const aDate = a.lastMessage?.createdAt ?? a.createdAt;
@@ -71,6 +85,7 @@ export async function getGroupChatById(
     include: groupChatInclude,
   });
   if (!chat) throw new NotFoundError("Chat doesn't exist");
+  await readChat(id, currentUserId);
   return buildGroupChatResponse(chat, currentUserId);
 }
 
@@ -237,7 +252,12 @@ export async function editGroupMemberRole(
 }
 
 /*Helper functions*/
-const groupMemberSelect = { ...safeUserInclude, isArchived: true, role: true };
+const groupMemberSelect = {
+  ...safeUserInclude,
+  isArchived: true,
+  role: true,
+  isRead: true,
+};
 
 const groupChatMessagesInclude = {
   include: {
@@ -310,6 +330,7 @@ async function buildGroupChatResponse(
     id: chat.id,
     isGroup: chat.isGroup,
     isArchived: primaryRaw.isArchived,
+    isRead: primaryRaw.isRead,
     name: chat.name!,
     imgUrl: chat.imgUrl!,
     createdAt: chat.createdAt,

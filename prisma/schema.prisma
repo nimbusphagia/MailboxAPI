@@ -59,6 +59,7 @@ model ChatMember {
   userId String?        @db.Uuid
   role   ChatMemberRole @default(MEMBER)
   isArchived  Boolean  @default(false)
+  isRead Boolean @default(true)
 }
 
 enum ChatMemberRole {
@@ -80,7 +81,6 @@ model ChatMessage {
   replyTo   ChatMessage?    @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replyToId String?         @db.Uuid
   replies   ChatMessage[]   @relation("MessageReplies")
-  isRead     Boolean       @default(false)
 }
 
 enum ChatMessageType {

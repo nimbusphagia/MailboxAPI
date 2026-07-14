@@ -1,6 +1,6 @@
 import prisma from "../config/prisma";
 import type { UuidType } from "../schemas/util.schema";
-import { ConflictError, ForbiddenError, NotFoundError } from "../errors";
+import { ForbiddenError, NotFoundError } from "../errors";
 import { ChatLazy, ChatLazySchema, ChatResponse } from "../schemas/chat.schema";
 import { safeUserInclude } from "./utils";
 import { Prisma } from "../generated/prisma/client";
@@ -24,12 +24,10 @@ export async function getChatsById(
       createdAt: true,
       isGroup: true,
       members: {
-        where: {
-          userId: {
-            not: currentUserId,
-          },
-        },
         select: {
+          userId: true,
+          isRead: true,
+          isArchived: true,
           user: {
             include: {
               contactOf: {
@@ -57,21 +55,29 @@ export async function getChatsById(
   });
 
   const mapped = raw.map((chat) => {
-    const member = chat.members[0];
-    const nickname = member.user?.contactOf[0]?.nickname ?? null;
+    const selfMember = chat.members.find((m) => m.userId === currentUserId);
+    const otherMemberRaw = chat.members.find((m) => m.userId !== currentUserId);
+
+    if (!selfMember || !otherMemberRaw) {
+      throw new NotFoundError("Chat members not found");
+    }
+
+    const nickname = otherMemberRaw.user?.contactOf[0]?.nickname ?? null;
     const isBlocked = Boolean(
-      member.user?.contactOf[0]?.isBlocked ||
-      member.user?.contacts[0]?.isBlocked,
+      otherMemberRaw.user?.contactOf[0]?.isBlocked ||
+      otherMemberRaw.user?.contacts[0]?.isBlocked,
     );
 
     return ChatLazySchema.parse({
       ...chat,
-      isArchived: isArchived ?? false,
+      isArchived: selfMember.isArchived,
+      isRead: selfMember.isRead,
       isBlocked,
-      otherMember: { ...member.user, nickname },
+      otherMember: { ...otherMemberRaw.user, nickname },
       lastMessage: chat.messages[0] ?? undefined,
     });
   });
+
   return mapped.sort((a, b) => {
     const aDate = a.lastMessage?.createdAt ?? a.createdAt;
     const bDate = b.lastMessage?.createdAt ?? b.createdAt;
@@ -91,6 +97,7 @@ export async function getChatById(
     omit: { name: true, imgUrl: true },
   });
   if (!raw) throw new NotFoundError("Chat doesn't exist");
+  await readChat(id, currentUserId);
   return buildChatResponse(raw, currentUserId);
 }
 
@@ -181,7 +188,7 @@ type ChatWithRelations = Prisma.ChatGetPayload<{
   omit: { name: true; imgUrl: true };
 }>;
 
-const memberSelect = { ...safeUserInclude, isArchived: true };
+const memberSelect = { ...safeUserInclude, isArchived: true, isRead: true };
 
 const chatMessagesInclude = {
   include: {
@@ -253,6 +260,7 @@ async function buildChatResponse(
     id: chatId,
     isGroup,
     isArchived: primaryRaw.isArchived,
+    isRead: primaryRaw.isRead,
     isBlocked,
     createdAt,
     primaryMember: primaryRaw.user,
@@ -262,4 +270,28 @@ async function buildChatResponse(
     },
     messages: messagesWithReply,
   };
+}
+export async function updateIsRead(
+  chatId: UuidType,
+  currentUserId: UuidType,
+  isRead: boolean,
+) {
+  const member = await prisma.chatMember.findFirst({
+    where: { chatId, userId: currentUserId },
+  });
+  if (!member) throw new NotFoundError("Chat member not found.");
+  await prisma.chatMember.updateMany({
+    where: { chatId, id: { not: member.id } },
+    data: { isRead },
+  });
+}
+export async function readChat(chatId: UuidType, currentUserId: UuidType) {
+  const member = await prisma.chatMember.findFirst({
+    where: { chatId, userId: currentUserId },
+  });
+  if (!member) throw new NotFoundError("Chat member not found.");
+  await prisma.chatMember.update({
+    where: { id: member.id },
+    data: { isRead: true },
+  });
 }

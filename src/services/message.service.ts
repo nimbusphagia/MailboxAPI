@@ -3,7 +3,7 @@ import { ForbiddenError, NotFoundError } from "../errors";
 import { ChatResponse, GroupResponse } from "../schemas/chat.schema";
 import type { MessageCreate, MessageType } from "../schemas/message.schema";
 import { UuidType } from "../schemas/util.schema";
-import { getChatById } from "./chat.service";
+import { getChatById, updateIsRead } from "./chat.service";
 import { getGroupChatById } from "./group.service";
 
 export async function createMessage(
@@ -47,6 +47,7 @@ export async function createMessage(
   await prisma.chatMessage.create({
     data: { ...data, senderId: currentUserId },
   });
+  await updateIsRead(data.chatId, currentUserId, false);
   return existingChat.isGroup
     ? getGroupChatById(data.chatId, currentUserId)
     : getChatById(data.chatId, currentUserId);
@@ -81,21 +82,4 @@ export async function deleteMessageServ(
   if (!existingMessage) throw new NotFoundError("Message not found");
 
   await prisma.chatMessage.delete({ where: { id, senderId: currentUserId } });
-}
-export async function readMessage(
-  id: UuidType,
-  currentUserId: UuidType,
-): Promise<void> {
-  const existingMessage = await prisma.chatMessage.findUnique({
-    where: {
-      id,
-      senderId: currentUserId,
-    },
-  });
-  if (!existingMessage) throw new NotFoundError("Message not found");
-
-  await prisma.chatMessage.update({
-    where: { id, senderId: currentUserId },
-    data: { isRead: true },
-  });
 }
