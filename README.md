@@ -1,8 +1,8 @@
-# MSG API
+# Mailbox API
 
 > Express · TypeScript · Prisma · PostgreSQL · Zod · Vitest
 
-A REST API for a messaging service supporting one-on-one chats, group chats, contacts, and user management.
+REST API for a messaging service supporting one-on-one chats, group chats, contacts, and user management.
 
 Live: [mailboxapi.vercel.app](https://mailboxapi.vercel.app)
 
